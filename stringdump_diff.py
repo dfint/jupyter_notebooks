@@ -7,7 +7,8 @@ app = marimo.App()
 @app.cell
 def _():
     import marimo as mo
-    from pathlib import Path    
+    from pathlib import Path
+
     return Path, mo
 
 
@@ -24,23 +25,19 @@ def _():
     from operator import itemgetter
     from collections.abc import Iterator
 
-
     def triplets(s: bytes) -> Iterator[memoryview]:
-        s = b' ' + s.strip() + b' '
+        s = b" " + s.strip() + b" "
         memview = memoryview(s)
-        for i in range(len(s)-2):
-            yield memview[i:i+3]
-
+        for i in range(len(s) - 2):
+            yield memview[i : i + 3]
 
     def all_triplets_from_many_lines(lines: Iterator[bytes]) -> Iterator[memoryview]:
         for line in lines:
             yield from triplets(line)
 
-
     def load_file(filename: str) -> set[bytes]:
-        with open(filename, 'rb') as file:
-            return {line.rstrip(b'\r\n') for line in file.readlines()}
-
+        with open(filename, "rb") as file:
+            return {line.rstrip(b"\r\n") for line in file.readlines()}
 
     def account_triplets(lines: Iterator[bytes]):
         c = Counter(all_triplets_from_many_lines(lines))
@@ -49,10 +46,10 @@ def _():
             c[key] /= m  # Normalize by max value
         return c
 
-
     def get_score(s: bytes, trained: dict[bytes, float]) -> float:
         # return sum(c[t] for t in triplets(s)) / len(s)
         return math.sqrt(sum(trained[t] for t in triplets(s)) / math.log(len(s) + 1))
+
     return account_triplets, get_score, itemgetter, load_file
 
 
@@ -60,24 +57,24 @@ def _():
 def _(Path, account_triplets, load_file):
     stringdumps_dir = Path("../stringdumps/")
 
-    old_file = load_file(stringdumps_dir / 'stringdump_0_47_04.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_0_47_05.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_0_47_03.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_0_47_02.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_0_47_01.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_0_44_12.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_steam_50_01.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_steam_50_02.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_steam_50_05.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_steam_50_06.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_steam_50_08.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_steam_50_09.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_steam_50_10.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_steam_50_11.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_steam_50_12.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_steam_50_13.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_steam_50_14.txt')
-    old_file |= load_file(stringdumps_dir / 'stringdump_steam_51_01.txt')
+    old_file = load_file(stringdumps_dir / "stringdump_0_47_04.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_0_47_05.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_0_47_03.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_0_47_02.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_0_47_01.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_0_44_12.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_01.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_02.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_05.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_06.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_08.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_09.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_10.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_11.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_12.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_13.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_14.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_51_01.txt")
 
     trained = account_triplets(old_file)  # Обучаем на старых файлах
     return old_file, trained
@@ -85,7 +82,7 @@ def _(Path, account_triplets, load_file):
 
 @app.cell
 def _(load_file):
-    new_file = load_file('../dfint64_patch/stringdump.txt')
+    new_file = load_file("../dfint64_patch/stringdump.txt")
     return (new_file,)
 
 
@@ -105,7 +102,9 @@ def _(diff, get_score, trained):
 
 @app.cell
 def _(mo):
-    slider = mo.ui.slider(start=0, stop=0.2, step=0.001, show_value=True, full_width=True)
+    slider = mo.ui.slider(
+        start=0, stop=0.2, step=0.001, show_value=True, full_width=True
+    )
     slider
     return (slider,)
 
@@ -126,18 +125,21 @@ def _(mo, write_file):
 @app.cell
 def _(Path, diff, get_score, itemgetter, new_file, threshold, trained):
     def write_file():
-        output_file = Path('../stringdumps/stringdump_steam_51_02.txt')
+        output_file = Path("../stringdumps/stringdump_steam_51_02.txt")
         if output_file.exists():
             print(f"File {output_file.name} already exists")
             return
-    
-        with open(output_file, 'wb') as output:
+
+        with open(output_file, "wb") as output:
             for line, number in sorted(new_file.items(), key=itemgetter(1)):
-                if line in diff and get_score(line, trained) < threshold: # Отсеиваем только добавившиеся строки
+                if (
+                    line in diff and get_score(line, trained) < threshold
+                ):  # Отсеиваем только добавившиеся строки
                     continue
-    
+
                 output.write(line)
-                output.write(b'\n')
+                output.write(b"\n")
+
     return (write_file,)
 
 
