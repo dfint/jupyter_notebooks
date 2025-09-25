@@ -3,58 +3,58 @@ import marimo
 __generated_with = "0.16.1"
 app = marimo.App()
 
-
-@app.cell
-def _():
+with app.setup:
     import marimo as mo
     from pathlib import Path
-
-    return Path, mo
-
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""Filter garbage strings from a new stringdump""")
-    return
-
-
-@app.cell
-def _():
     from collections import Counter
     import math
     from operator import itemgetter
     from collections.abc import Iterator
 
-    def triplets(s: bytes) -> Iterator[memoryview]:
-        s = b" " + s.strip() + b" "
-        memview = memoryview(s)
-        for i in range(len(s) - 2):
-            yield memview[i : i + 3]
 
-    def all_triplets_from_many_lines(lines: Iterator[bytes]) -> Iterator[memoryview]:
-        for line in lines:
-            yield from triplets(line)
+@app.cell(hide_code=True)
+def _():
+    mo.md(r"""## Filter garbage strings from a new stringdump""")
+    return
 
-    def load_file(filename: str) -> set[bytes]:
-        with open(filename, "rb") as file:
-            return {line.rstrip(b"\r\n") for line in file.readlines()}
 
-    def account_triplets(lines: Iterator[bytes]):
-        c = Counter(all_triplets_from_many_lines(lines))
-        m = max(c.values())
-        for key in c:
-            c[key] /= m  # Normalize by max value
-        return c
+@app.function
+def triplets(s: bytes) -> Iterator[memoryview]:
+    s = b" " + s.strip() + b" "
+    memview = memoryview(s)
+    for i in range(len(s) - 2):
+        yield memview[i : i + 3]
 
-    def get_score(s: bytes, trained: dict[bytes, float]) -> float:
-        # return sum(c[t] for t in triplets(s)) / len(s)
-        return math.sqrt(sum(trained[t] for t in triplets(s)) / math.log(len(s) + 1))
 
-    return account_triplets, get_score, itemgetter, load_file
+@app.function
+def all_triplets_from_many_lines(lines: Iterator[bytes]) -> Iterator[memoryview]:
+    for line in lines:
+        yield from triplets(line)
+
+
+@app.function
+def load_file(filename: str) -> set[bytes]:
+    with open(filename, "rb") as file:
+        return {line.rstrip(b"\r\n") for line in file.readlines()}
+
+
+@app.function
+def account_triplets(lines: Iterator[bytes]):
+    c = Counter(all_triplets_from_many_lines(lines))
+    m = max(c.values())
+    for key in c:
+        c[key] /= m  # Normalize by max value
+    return c
+
+
+@app.function
+def get_score(s: bytes, trained: dict[bytes, float]) -> float:
+    # return sum(c[t] for t in triplets(s)) / len(s)
+    return math.sqrt(sum(trained[t] for t in triplets(s)) / math.log(len(s) + 1))
 
 
 @app.cell
-def _(Path, account_triplets, load_file):
+def _():
     stringdumps_dir = Path("../stringdumps/")
 
     old_file = load_file(stringdumps_dir / "stringdump_0_47_04.txt")
@@ -81,19 +81,19 @@ def _(Path, account_triplets, load_file):
 
 
 @app.cell
-def _(load_file):
+def _():
     new_file = load_file("../dfint64_patch/stringdump.txt")
     return (new_file,)
 
 
 @app.cell
-def _(get_score, new_file, old_file, trained):
+def _(new_file, old_file, trained):
     diff = sorted(new_file - old_file, key=lambda s: get_score(s, trained))
     return (diff,)
 
 
 @app.cell
-def _(diff, get_score, trained):
+def _(diff, trained):
     for item in diff[:200]:
         score = get_score(item, trained)
         print(f"{item!r:40} {score:.10f}")
@@ -101,7 +101,7 @@ def _(diff, get_score, trained):
 
 
 @app.cell
-def _(mo):
+def _():
     slider = mo.ui.slider(
         start=0, stop=0.2, step=0.001, show_value=True, full_width=True
     )
@@ -116,14 +116,14 @@ def _(slider):
 
 
 @app.cell
-def _(mo, write_file):
+def _(write_file):
     button = mo.ui.button(label="Write file", on_click=lambda _: write_file())
     button
     return
 
 
 @app.cell
-def _(Path, diff, get_score, itemgetter, new_file, threshold, trained):
+def _(diff, new_file, threshold, trained):
     def write_file():
         output_file = Path("../stringdumps/stringdump_steam_51_02.txt")
         if output_file.exists():
