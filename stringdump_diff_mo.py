@@ -1,9 +1,9 @@
 import marimo
 
-__generated_with = "0.16.1"
+__generated_with = "0.23.1"
 app = marimo.App()
 
-with app.setup:
+with app.setup(hide_code=True):
     import marimo as mo
     from pathlib import Path
     from collections import Counter
@@ -14,11 +14,13 @@ with app.setup:
 
 @app.cell(hide_code=True)
 def _():
-    mo.md(r"""## Filter garbage strings from a new stringdump""")
+    mo.md(r"""
+    ## Filter garbage strings from a new stringdump
+    """)
     return
 
 
-@app.function
+@app.function(hide_code=True)
 def triplets(s: bytes) -> Iterator[memoryview]:
     s = b" " + s.strip() + b" "
     memview = memoryview(s)
@@ -26,19 +28,19 @@ def triplets(s: bytes) -> Iterator[memoryview]:
         yield memview[i : i + 3]
 
 
-@app.function
+@app.function(hide_code=True)
 def all_triplets_from_many_lines(lines: Iterator[bytes]) -> Iterator[memoryview]:
     for line in lines:
         yield from triplets(line)
 
 
-@app.function
+@app.function(hide_code=True)
 def load_file(filename: str) -> set[bytes]:
     with open(filename, "rb") as file:
         return {line.rstrip(b"\r\n") for line in file.readlines()}
 
 
-@app.function
+@app.function(hide_code=True)
 def account_triplets(lines: Iterator[bytes]):
     c = Counter(all_triplets_from_many_lines(lines))
     m = max(c.values())
@@ -47,7 +49,7 @@ def account_triplets(lines: Iterator[bytes]):
     return c
 
 
-@app.function
+@app.function(hide_code=True)
 def get_score(s: bytes, trained: dict[bytes, float]) -> float:
     # return sum(c[t] for t in triplets(s)) / len(s)
     return math.sqrt(sum(trained[t] for t in triplets(s)) / math.log(len(s) + 1))
@@ -56,7 +58,11 @@ def get_score(s: bytes, trained: dict[bytes, float]) -> float:
 @app.cell
 def _():
     stringdumps_dir = Path("../stringdumps/")
+    return (stringdumps_dir,)
 
+
+@app.cell
+def _(stringdumps_dir):
     old_file = load_file(stringdumps_dir / "stringdump_0_47_04.txt")
     old_file |= load_file(stringdumps_dir / "stringdump_0_47_05.txt")
     old_file |= load_file(stringdumps_dir / "stringdump_0_47_03.txt")
@@ -75,6 +81,9 @@ def _():
     old_file |= load_file(stringdumps_dir / "stringdump_steam_50_13.txt")
     old_file |= load_file(stringdumps_dir / "stringdump_steam_50_14.txt")
     old_file |= load_file(stringdumps_dir / "stringdump_steam_51_01.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_52_05.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_53_02.txt")
+    old_file |= load_file(stringdumps_dir / "stringdump_steam_53_05.txt")
 
     trained = account_triplets(old_file)  # Обучаем на старых файлах
     return old_file, trained
@@ -101,18 +110,45 @@ def _(diff, trained):
 
 
 @app.cell
-def _():
-    slider = mo.ui.slider(
-        start=0, stop=0.2, step=0.001, show_value=True, full_width=True
-    )
-    slider
-    return (slider,)
-
-
-@app.cell
 def _(slider):
     threshold = slider.value
     return (threshold,)
+
+
+@app.cell(hide_code=True)
+def _(diff, threshold, trained):
+    prev = None
+    after = None
+    for _item in diff:
+        _score = get_score(_item, trained)
+        if _score < threshold:
+            prev = _item
+        else:
+            after = _item
+            break
+
+    if prev is not None and after is not None:
+        print(f"Before threshold: {prev}")
+        print(f"After threshold: {after}")
+    elif prev is not None:
+        print(f"Before threshold: {prev}")
+        print("No items found after threshold.")
+    elif after is not None:
+        print("No items found before threshold.")
+        print(f"After threshold: {after}")
+    else:
+        print("No items found around threshold.")
+    return
+
+
+@app.cell
+def _(diff, trained):
+    stop = round(get_score(diff[-1], trained) + 0.01, ndigits=4)
+    slider = mo.ui.slider(
+        start=0, stop=stop, step=0.001, show_value=True, full_width=True
+    )
+    slider
+    return (slider,)
 
 
 @app.cell
@@ -123,9 +159,9 @@ def _(write_file):
 
 
 @app.cell
-def _(diff, new_file, threshold, trained):
+def _(diff, new_file, stringdumps_dir, threshold, trained):
     def write_file():
-        output_file = Path("../stringdumps/stringdump_steam_51_02.txt")
+        output_file = stringdumps_dir / "stringdump_steam_53_12.txt"
         if output_file.exists():
             print(f"File {output_file.name} already exists")
             return
@@ -141,6 +177,11 @@ def _(diff, new_file, threshold, trained):
                 output.write(b"\n")
 
     return (write_file,)
+
+
+@app.cell
+def _():
+    return
 
 
 if __name__ == "__main__":
