@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.1"
+__generated_with = "0.23.2"
 app = marimo.App()
 
 with app.setup(hide_code=True):
@@ -55,9 +55,10 @@ def get_score(s: bytes, trained: dict[bytes, float]) -> float:
     return math.sqrt(sum(trained[t] for t in triplets(s)) / math.log(len(s) + 1))
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _():
-    stringdumps_dir = Path("../stringdumps/")
+    stringdumps_dir = Path(__file__).parent.parent / "stringdumps"
+    assert stringdumps_dir.exists() and stringdumps_dir.is_dir()
     return (stringdumps_dir,)
 
 
@@ -127,17 +128,8 @@ def _(diff, threshold, trained):
             after = _item
             break
 
-    if prev is not None and after is not None:
-        print(f"Before threshold: {prev}")
-        print(f"After threshold: {after}")
-    elif prev is not None:
-        print(f"Before threshold: {prev}")
-        print("No items found after threshold.")
-    elif after is not None:
-        print("No items found before threshold.")
-        print(f"After threshold: {after}")
-    else:
-        print("No items found around threshold.")
+    mo.md(f"""Before threshold: `{prev or "No items before"}`  
+    After threshold: `{after or "No items after"}`""")
     return
 
 
@@ -155,6 +147,27 @@ def _(diff, trained):
 def _(write_file):
     button = mo.ui.button(label="Write file", on_click=lambda _: write_file())
     button
+    return
+
+
+@app.cell
+def _():
+    form = mo.ui.text("stringdump_steam_53_12.txt", label="Output file name", full_width=True).form(submit_button_label="Write file")
+    return (form,)
+
+
+@app.cell
+def _(form, stringdumps_dir):
+    # DRAFT
+    stack = [
+        mo.md("""<span style="color:red">DRAFT, DOESN'T WORK YET</span>"""),
+        form,
+    ]
+    output_path = None if not form.value else stringdumps_dir / form.value
+    if output_path and output_path.exists:
+        stack.append(mo.md("""<span style="color:red">File already exists</span>"""))
+
+    mo.vstack(stack)
     return
 
 
