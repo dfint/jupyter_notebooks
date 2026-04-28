@@ -74,7 +74,9 @@ def _():
 
 @app.cell
 def get_stringdump_files(stringdumps_dir):
-    stringdump_files = sorted(file for file in stringdumps_dir.glob("stringdump_steam_*.txt")) 
+    stringdump_files = sorted(
+        file for file in stringdumps_dir.glob("stringdump_steam_*.txt")
+    )
     list(reversed(stringdump_files))
     return (stringdump_files,)
 
@@ -96,7 +98,9 @@ def training(checkbox_exclude, stringdump_files):
     _count = account_triplets(old_file)
     trained = normalize(_count)
     # count.most_common(10)
-    _most_common = [{"triplet": key, "count": value} for key, value in _count.most_common()]
+    _most_common = [
+        {"triplet": key, "count": value} for key, value in _count.most_common()
+    ]
     mo.ui.table(_most_common)
     return old_file, trained
 
@@ -117,8 +121,7 @@ def new_lines_scored(new_file, old_file, trained):
 @app.cell(hide_code=True)
 def _(diff, trained):
     scores_per_line = [
-        {"string": string, "score": get_score(string, trained)}
-        for string in diff
+        {"string": string, "score": get_score(string, trained)} for string in diff
     ]
 
     mo.ui.table(scores_per_line)
@@ -177,7 +180,9 @@ def _(checkbox_exclude, diff, slider, trained):
 
 @app.cell(hide_code=True)
 def form():
-    form = mo.ui.text("stringdump_steam_53_12.txt", label="Output file name", full_width=True).form(submit_button_label="Write file")
+    form = mo.ui.text(
+        "stringdump_steam_53_12.txt", label="Output file name", full_width=True
+    ).form(submit_button_label="Write file")
     return (form,)
 
 
@@ -190,7 +195,11 @@ def form_vstack(form, stringdump_files, stringdumps_dir):
     filename = form.value
     output_path = None if not form.value else stringdumps_dir / filename
     if output_path and output_path.exists():
-        _stack.append(mo.md(f"""<span style="color:red">File {output_path.name} already exists</span>"""))
+        _stack.append(
+            mo.md(
+                f"""<span style="color:red">File {output_path.name} already exists</span>"""
+            )
+        )
 
     mo.vstack(_stack)
     return (output_path,)
