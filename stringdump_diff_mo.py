@@ -16,7 +16,7 @@ with app.setup(hide_code=True):
     from collections import Counter
     import math
     from operator import itemgetter
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Iterable
 
 
 @app.cell(hide_code=True)
@@ -35,7 +35,7 @@ def triplets(s: bytes) -> Iterator[bytes]:
 
 
 @app.function(hide_code=True)
-def all_triplets_from_many_lines(lines: Iterator[bytes]) -> Iterator[bytes]:
+def all_triplets_from_many_lines(lines: Iterable[bytes]) -> Iterator[bytes]:
     for line in lines:
         yield from triplets(line)
 
@@ -47,18 +47,28 @@ def load_file(filename: str) -> set[bytes]:
 
 
 @app.function(hide_code=True)
-def account_triplets(lines: Iterator[bytes]):
+def account_triplets(lines: Iterable[bytes]) -> Counter[bytes]:
     c = Counter(all_triplets_from_many_lines(lines))
     m = max(c.values())
-    for key in c:
-        c[key] /= m  # Normalize by max value
+    normalized = {}
+    for key, value in c.items():
+        normalized[key] = value / m  # Normalize by max value
     return c
+
+
+@app.function(hide_code=True)
+def normalize(counter: dict[bytes, int]) -> dict[bytes, float]:
+    normalized = {}
+    max_value = max(counter.values())
+    for key, value in counter.items():
+        normalized[key] = value / max_value
+    return normalized
 
 
 @app.function(hide_code=True)
 def get_score(s: bytes, trained: dict[bytes, float]) -> float:
     # return sum(c[t] for t in triplets(s)) / len(s)
-    return math.sqrt(sum(trained[t] for t in triplets(s)) / math.log(len(s) + 1))
+    return math.sqrt(sum(trained.get(t, 0) for t in triplets(s)) / math.log(len(s) + 1))
 
 
 @app.cell(hide_code=True)
@@ -71,25 +81,29 @@ def _():
 @app.cell
 def get_stringdump_files(stringdumps_dir):
     stringdump_files = sorted(file for file in stringdumps_dir.glob("stringdump_steam_*.txt")) 
-    stringdump_files
+    list(reversed(stringdump_files))
     return (stringdump_files,)
 
 
 @app.cell(hide_code=True)
-def training(stringdump_files):
-    # Training on old files
-    last_file = stringdump_files[-1]
-    exclude = {last_file.name}
+def training(checkbox_exclude, stringdump_files):
+    exclude = set()
+    if checkbox_exclude.value:
+        last_file = stringdump_files[-1]
+        exclude.add(last_file.name)
 
-    old_file = set()
+    old_file = set[bytes]()
 
     for file in stringdump_files:
         if file.name in exclude:
             continue
         old_file |= load_file(file)
 
-    trained = account_triplets(old_file)
-    trained.most_common(5)
+    count = account_triplets(old_file)
+    trained = normalize(count)
+    # count.most_common(10)
+    most_common = [{"triplet": key, "count": value} for key, value in count.most_common()]
+    mo.ui.table(most_common)
     return old_file, trained
 
 
@@ -106,11 +120,14 @@ def new_lines_scored(new_file, old_file, trained):
     return (diff,)
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(diff, trained):
-    for item in diff[:200]:
-        score = get_score(item, trained)
-        print(f"{item!r:40} {score:.10f}")
+    scores_per_line = [
+        {"string": string, "score": get_score(string, trained)}
+        for string in diff
+    ]
+
+    mo.ui.table(scores_per_line)
     return
 
 
@@ -124,7 +141,13 @@ def slider(diff, trained):
 
 
 @app.cell(hide_code=True)
-def _(diff, slider, trained):
+def _():
+    checkbox_exclude = mo.ui.checkbox(label="Exclude last file", value=False)
+    return (checkbox_exclude,)
+
+
+@app.cell(hide_code=True)
+def _(checkbox_exclude, diff, slider, trained):
     threshold = slider.value
     split_index = None
     for _i, _item in enumerate(diff):
@@ -143,6 +166,7 @@ def _(diff, slider, trained):
     after = diff[_i] if split_index < len(diff) else None
 
     _stack = [
+        checkbox_exclude,
         mo.md(f"""Before threshold:  
         ```python
         {prev}
