@@ -47,12 +47,7 @@ def load_file(filename: str | Path) -> set[bytes]:
 
 @app.function(hide_code=True)
 def account_triplets(lines: Iterable[bytes]) -> Counter[bytes]:
-    c = Counter(all_triplets_from_many_lines(lines))
-    m = max(c.values())
-    normalized = {}
-    for key, value in c.items():
-        normalized[key] = value / m  # Normalize by max value
-    return c
+    return Counter(all_triplets_from_many_lines(lines))
 
 
 @app.function(hide_code=True)
