@@ -15,7 +15,6 @@ with app.setup(hide_code=True):
     from pathlib import Path
     from collections import Counter
     import math
-    from operator import itemgetter
     from collections.abc import Iterator, Iterable
 
 
@@ -41,7 +40,7 @@ def all_triplets_from_many_lines(lines: Iterable[bytes]) -> Iterator[bytes]:
 
 
 @app.function(hide_code=True)
-def load_file(filename: str) -> set[bytes]:
+def load_file(filename: str | Path) -> set[bytes]:
     with open(filename, "rb") as file:
         return {line.rstrip(b"\r\n") for line in file.readlines()}
 
@@ -217,7 +216,7 @@ def _(diff, new_file, threshold, trained):
             return
 
         with open(output_file, "wb") as output:
-            for line, number in sorted(new_file.items(), key=itemgetter(1)):
+            for line in new_file:
                 if (
                     line in diff and get_score(line, trained) < threshold
                 ):  # Отсеиваем только добавившиеся строки
