@@ -81,23 +81,23 @@ def get_stringdump_files(stringdumps_dir):
 
 @app.cell(hide_code=True)
 def training(checkbox_exclude, stringdump_files):
-    exclude = set()
+    _exclude = set()
     if checkbox_exclude.value:
         last_file = stringdump_files[-1]
-        exclude.add(last_file.name)
+        _exclude.add(last_file.name)
 
     old_file = set[bytes]()
 
     for file in stringdump_files:
-        if file.name in exclude:
+        if file.name in _exclude:
             continue
         old_file |= load_file(file)
 
-    count = account_triplets(old_file)
-    trained = normalize(count)
+    _count = account_triplets(old_file)
+    trained = normalize(_count)
     # count.most_common(10)
-    most_common = [{"triplet": key, "count": value} for key, value in count.most_common()]
-    mo.ui.table(most_common)
+    _most_common = [{"triplet": key, "count": value} for key, value in _count.most_common()]
+    mo.ui.table(_most_common)
     return old_file, trained
 
 
@@ -221,11 +221,6 @@ def _(diff, new_file, threshold, trained):
                 output.write(b"\n")
 
     return (write_file,)
-
-
-@app.cell
-def _():
-    return
 
 
 if __name__ == "__main__":
