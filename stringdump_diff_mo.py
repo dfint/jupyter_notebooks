@@ -1,6 +1,13 @@
+# /// script
+# requires-python = ">=3.14"
+# dependencies = [
+#     "marimo>=0.23.3",
+# ]
+# ///
+
 import marimo
 
-__generated_with = "0.23.2"
+__generated_with = "0.23.3"
 app = marimo.App()
 
 with app.setup(hide_code=True):
@@ -21,15 +28,14 @@ def _():
 
 
 @app.function(hide_code=True)
-def triplets(s: bytes) -> Iterator[memoryview]:
+def triplets(s: bytes) -> Iterator[bytes]:
     s = b" " + s.strip() + b" "
-    memview = memoryview(s)
     for i in range(len(s) - 2):
-        yield memview[i : i + 3]
+        yield s[i : i + 3]
 
 
 @app.function(hide_code=True)
-def all_triplets_from_many_lines(lines: Iterator[bytes]) -> Iterator[memoryview]:
+def all_triplets_from_many_lines(lines: Iterator[bytes]) -> Iterator[bytes]:
     for line in lines:
         yield from triplets(line)
 
@@ -63,30 +69,27 @@ def _():
 
 
 @app.cell
-def _(stringdumps_dir):
-    old_file = load_file(stringdumps_dir / "stringdump_0_47_04.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_0_47_05.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_0_47_03.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_0_47_02.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_0_47_01.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_0_44_12.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_01.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_02.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_05.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_06.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_08.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_09.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_10.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_11.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_12.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_13.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_50_14.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_51_01.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_52_05.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_53_02.txt")
-    old_file |= load_file(stringdumps_dir / "stringdump_steam_53_05.txt")
+def get_stringdump_files(stringdumps_dir):
+    stringdump_files = sorted(file for file in stringdumps_dir.glob("stringdump_steam_*.txt")) 
+    stringdump_files
+    return (stringdump_files,)
 
-    trained = account_triplets(old_file)  # Обучаем на старых файлах
+
+@app.cell(hide_code=True)
+def training(stringdump_files):
+    # Training on old files
+    last_file = stringdump_files[-1]
+    exclude = {last_file.name}
+
+    old_file = set()
+
+    for file in stringdump_files:
+        if file.name in exclude:
+            continue
+        old_file |= load_file(file)
+
+    trained = account_triplets(old_file)
+    trained.most_common(5)
     return old_file, trained
 
 
@@ -97,8 +100,9 @@ def _():
 
 
 @app.cell
-def _(new_file, old_file, trained):
+def new_lines_scored(new_file, old_file, trained):
     diff = sorted(new_file - old_file, key=lambda s: get_score(s, trained))
+    len(diff)
     return (diff,)
 
 
@@ -110,71 +114,80 @@ def _(diff, trained):
     return
 
 
-@app.cell
-def _(slider):
-    threshold = slider.value
-    return (threshold,)
-
-
 @app.cell(hide_code=True)
-def _(diff, threshold, trained):
-    prev = None
-    after = None
-    for _item in diff:
-        _score = get_score(_item, trained)
-        if _score < threshold:
-            prev = _item
-        else:
-            after = _item
-            break
-
-    mo.md(f"""Before threshold: `{prev or "No items before"}`  
-    After threshold: `{after or "No items after"}`""")
-    return
-
-
-@app.cell
-def _(diff, trained):
+def slider(diff, trained):
     stop = round(get_score(diff[-1], trained) + 0.01, ndigits=4)
     slider = mo.ui.slider(
         start=0, stop=stop, step=0.001, show_value=True, full_width=True
     )
-    slider
     return (slider,)
 
 
-@app.cell
-def _(write_file):
-    button = mo.ui.button(label="Write file", on_click=lambda _: write_file())
-    button
-    return
+@app.cell(hide_code=True)
+def _(diff, slider, trained):
+    threshold = slider.value
+    split_index = None
+    for _i, _item in enumerate(diff):
+        _score = get_score(_item, trained)
+        if _score < threshold:
+            continue
+
+        split_index = _i
+        break
+    else:
+        split_index = len(diff) + 1
+
+    print(threshold, _score, split_index, len(diff))
+
+    prev = diff[_i - 1] if split_index > 0 else None
+    after = diff[_i] if split_index < len(diff) else None
+
+    _stack = [
+        mo.md(f"""Before threshold:  
+        ```python
+        {prev}
+        ```
+        After threshold:  
+        ```python
+        {after}
+        ```"""),
+        slider,
+    ]
+    mo.vstack(_stack)
+    return (threshold,)
 
 
-@app.cell
-def _():
+@app.cell(hide_code=True)
+def form():
     form = mo.ui.text("stringdump_steam_53_12.txt", label="Output file name", full_width=True).form(submit_button_label="Write file")
     return (form,)
 
 
-@app.cell
-def _(form, stringdumps_dir):
-    # DRAFT
-    stack = [
-        mo.md("""<span style="color:red">DRAFT, DOESN'T WORK YET</span>"""),
+@app.cell(hide_code=True)
+def form_vstack(form, stringdump_files, stringdumps_dir):
+    _stack = [
+        mo.md(f"Last file: `{stringdump_files[-1].name}`"),
         form,
     ]
-    output_path = None if not form.value else stringdumps_dir / form.value
-    if output_path and output_path.exists:
-        stack.append(mo.md("""<span style="color:red">File already exists</span>"""))
+    filename = form.value
+    output_path = None if not form.value else stringdumps_dir / filename
+    if output_path and output_path.exists():
+        _stack.append(mo.md(f"""<span style="color:red">File {output_path.name} already exists</span>"""))
 
-    mo.vstack(stack)
+    mo.vstack(_stack)
+    return (output_path,)
+
+
+@app.cell
+def _(output_path, write_file):
+    if output_path:
+        write_file(output_path)
     return
 
 
 @app.cell
-def _(diff, new_file, stringdumps_dir, threshold, trained):
-    def write_file():
-        output_file = stringdumps_dir / "stringdump_steam_53_12.txt"
+def _(diff, new_file, threshold, trained):
+    def write_file(output_file: Path) -> None:
         if output_file.exists():
             print(f"File {output_file.name} already exists")
             return
