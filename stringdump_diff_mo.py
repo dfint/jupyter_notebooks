@@ -7,7 +7,7 @@
 
 import marimo
 
-__generated_with = "0.23.3"
+__generated_with = "0.23.10"
 app = marimo.App()
 
 with app.setup(hide_code=True):
@@ -132,7 +132,7 @@ def _(diff, trained):
 def slider(diff, trained):
     stop = round(get_score(diff[-1], trained) + 0.01, ndigits=4)
     slider = mo.ui.slider(
-        start=0, stop=stop, step=0.001, show_value=True, full_width=True
+        start=0, stop=stop, step=0.001, show_value=True, full_width=True, include_input=True
     )
     return (slider,)
 
@@ -215,10 +215,6 @@ def _(output_path, write_file):
 @app.cell
 def _(diff, new_file, threshold, trained):
     def write_file(output_file: Path) -> None:
-        if output_file.exists():
-            print(f"File {output_file.name} already exists")
-            return
-
         with open(output_file, "wb") as output:
             for line in new_file:
                 if (
@@ -228,6 +224,7 @@ def _(diff, new_file, threshold, trained):
 
                 output.write(line)
                 output.write(b"\n")
+        print(f"File {output_file.name} has been written.")
 
     return (write_file,)
 
